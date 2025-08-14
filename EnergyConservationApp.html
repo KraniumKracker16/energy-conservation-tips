@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Conservation App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 900px;
+        }
+        .bg-gradient-header {
+            background-image: linear-gradient(to right, #4ade80, #34d399);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div id="app" class="container mx-auto p-4 md:p-8">
+        <!-- Main application content will be rendered here -->
+    </div>
+
+    <script>
+        const appDiv = document.getElementById('app');
+        
+        // Fetch quiz questions from the server
+        let QUIZ_QUESTIONS = [];
+        let EFFORT_PROMPTS = [
+            { key: "EngineOffIdle", text: "Turned off the engine instead of idling" },
+            { key: "CombinedTrips", text: "Combined errands to reduce driving trips" },
+            { key: "ThermostatSet", text: "Set thermostat to 78°F or higher" },
+            { key: "FanUse", text: "Used fans to boost AC efficiency" }
+        ];
+
+        // Helper function to create HTML elements
+        const h = (tag, classes, content = '') => {
+            const el = document.createElement(tag);
+            if (classes) el.className = classes;
+            if (content) el.innerHTML = content;
+            return el;
+        };
+
+        const renderMessage = (message, type = 'info') => {
+            const messageBox = h('div', `rounded-lg p-4 my-4 text-center text-sm font-medium ${
+                type === 'success' ? 'bg-green-100 text-green-700' :
+                type === 'error' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+            }`);
+            messageBox.innerHTML = message;
+            appDiv.appendChild(messageBox);
+        };
+
+        const renderLoading = () => {
+            appDiv.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-64">
+                    <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-green-500"></div>
+                    <p class="mt-4 text-gray-600">Loading...</p>
+                </div>
+            `;
+        };
+        
+        // Function to render the main menu
+        const renderMenu = (message = '') => {
+            appDiv.innerHTML = '';
+            
+            const header = h('div', 'bg-gradient-header text-white rounded-t-xl p-6 text-center shadow-lg');
+            header.innerHTML = `
+                <h1 class="text-4xl font-bold mb-2">Energy Conservation App</h1>
+                <p class="text-lg">What would you like to learn or do today?</p>
+            `;
+            appDiv.appendChild(header);
+
+            if (message) {
+                 renderMessage(message);
+            }
+
+            const menuGrid = h('div', 'bg-white rounded-b-xl p-8 grid grid-cols-1 md:grid-cols-2 gap-4 shadow-lg');
+            
+            const menuItems = [
+                { id: 'driving', text: '🌱 Driving: Save Energy' },
+                { id: 'ac', text: '❄️ Air Conditioning: Save Energy' },
+                { id: 'why', text: '💡 Why Conserve Energy?' },
+                { id: 'quiz', text: '📚 Energy Quiz' },
+                { id: 'track', text: '✅ Track Conservation Efforts' },
+                { id: 'summary', text: '📊 Show My Efforts Summary' },
+                { id: 'resources', text: '🌍 Local Energy-Saving Resources' },
+                { id: 'coach', text: '🤖 Energy Coach' },
+            ];
+
+            menuItems.forEach(item => {
+                const button = h('button', 'w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-4 px-6 rounded-lg transition-colors duration-200 ease-in-out', item.text);
+                button.onclick = () => handleChoice(item.id);
+                menuGrid.appendChild(button);
+            });
+            
+            const exitButton = h('button', 'col-span-full mt-4 bg-red-500 hover:bg-red-600 text-white font-medium py-4 px-6 rounded-lg transition-colors duration-200 ease-in-out', 'Exit');
+            exitButton.onclick = () => printFarewell();
+            menuGrid.appendChild(exitButton);
+
+            appDiv.appendChild(menuGrid);
+        };
+
+        const handleChoice = (choice) => {
+            appDiv.innerHTML = '';
+            let contentDiv = h('div', 'bg-white rounded-xl p-8 shadow-lg');
+            let backButton = h('button', 'mt-6 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200 ease-in-out', '← Back to Menu');
+            backButton.onclick = () => renderMenu();
+
+            switch (choice) {
+                case 'driving':
+                    contentDiv.innerHTML = `
+                        <h2 class="text-3xl font-bold mb-4 text-center text-green-700">🌱 Driving Energy Conservation Tips</h2>
+                        <ul class="list-disc list-inside space-y-2 text-lg text-gray-700">
+                            <li>Accelerate and brake gently to reduce fuel use.</li>
+                            <li>Use cruise control for steady speeds when safe.</li>
+                            <li>Keep tires properly inflated and get regular tune-ups.</li>
+                            <li>Remove unneeded items from your car to reduce weight.</li>
+                            <li>Avoid idling for long periods. Turn off your engine when parked.</li>
+                            <li>Plan trips to combine errands and avoid traffic when possible.</li>
+                        </ul>
+                    `;
+                    appDiv.appendChild(contentDiv);
+                    appDiv.appendChild(backButton);
+                    break;
+
+                case 'ac':
+                    contentDiv.innerHTML = `
+                        <h2 class="text-3xl font-bold mb-4 text-center text-green-700">❄️ Air Conditioning Energy Conservation Tips</h2>
+                        <ul class="list-disc list-inside space-y-2 text-lg text-gray-700">
+                            <li>Set your thermostat to 78°F (25°C) when at home.</li>
+                            <li>Use ceiling or portable fans to boost cool air circulation.</li>
+                            <li>Keep windows and doors closed; draw blinds during peak heat.</li>
+                            <li>Clean or replace AC filters for maximum efficiency.</li>
+                            <li>Schedule regular maintenance checks for your unit.</li>
+                            <li>Upgrade to an energy-efficient model and use programmable thermostats.</li>
+                        </ul>
+                    `;
+                    appDiv.appendChild(contentDiv);
+                    appDiv.appendChild(backButton);
+                    break;
+                
+                case 'why':
+                    contentDiv.innerHTML = `
+                        <h2 class="text-3xl font-bold mb-4 text-center text-green-700">💡 Why Save Energy?</h2>
+                        <ul class="list-disc list-inside space-y-2 text-lg text-gray-700">
+                            <li>Reduces greenhouse gas emissions and slows climate change.</li>
+                            <li>Saves money on fuel and electricity bills.</li>
+                            <li>Helps create a healthier environment for everyone.</li>
+                            <li>Small actions add up to big impacts!</li>
+                        </ul>
+                    `;
+                    appDiv.appendChild(contentDiv);
+                    appDiv.appendChild(backButton);
+                    break;
+
+                case 'quiz':
+                    renderQuiz();
+                    break;
+
+                case 'track':
+                    renderEffortTracker();
+                    break;
+
+                case 'summary':
+                    renderEffortsSummary();
+                    break;
+
+                case 'resources':
+                    contentDiv.innerHTML = `
+                        <h2 class="text-3xl font-bold mb-4 text-center text-green-700">🌍 Local Energy-Saving Resources</h2>
+                        <ul class="list-disc list-inside space-y-2 text-lg text-gray-700">
+                            <li>Check your utility company’s website for energy-saving programs and rebates.</li>
+                            <li>Explore local government initiatives for home energy audits.</li>
+                            <li>Visit the DOE ENERGY STAR website for tips and certified products.</li>
+                            <li>Look for community workshops or seminars on energy conservation.</li>
+                            <li>Use apps that monitor and help reduce your home energy consumption.</li>
+                        </ul>
+                    `;
+                    appDiv.appendChild(contentDiv);
+                    appDiv.appendChild(backButton);
+                    break;
+
+                case 'coach':
+                    renderEnergyCoach();
+                    break;
+            }
+        };
+
+        const renderQuiz = async () => {
+            renderLoading();
+            try {
+                const response = await fetch('/api/quiz');
+                if (!response.ok) throw new Error('Network response was not ok.');
+                QUIZ_QUESTIONS = await response.json();
+            } catch (error) {
+                renderMenu(`Error fetching quiz questions: ${error.message}`, 'error');
+                return;
+            }
+
+            appDiv.innerHTML = '';
+            const quizContainer = h('div', 'bg-white rounded-xl p-8 shadow-lg');
+            quizContainer.innerHTML = `
+                <h2 class="text-3xl font-bold mb-6 text-center text-green-700">📚 Energy Conservation Quiz</h2>
+                <div id="quiz-content" class="space-y-6"></div>
+                <div id="quiz-results" class="text-center mt-6 hidden"></div>
+            `;
+            appDiv.appendChild(quizContainer);
+
+            let currentQuestionIndex = 0;
+            let score = 0;
+
+            const renderQuestion = () => {
+                const quizContent = document.getElementById('quiz-content');
+                quizContent.innerHTML = '';
+                if (currentQuestionIndex >= QUIZ_QUESTIONS.length) {
+                    showQuizResults();
+                    return;
+                }
+
+                const questionData = QUIZ_QUESTIONS[currentQuestionIndex];
+                const questionDiv = h('div', 'mb-4');
+                questionDiv.innerHTML = `<p class="text-lg font-medium mb-2">${currentQuestionIndex + 1}. ${questionData.question}</p>`;
+
+                const optionsDiv = h('div', 'space-y-2');
+                questionData.options.forEach((option, index) => {
+                    const label = h('label', 'block cursor-pointer');
+                    label.innerHTML = `
+                        <input type="checkbox" name="option" value="${index}" class="mr-2 text-green-600 focus:ring-green-500 rounded-sm">
+                        ${option}
+                    `;
+                    optionsDiv.appendChild(label);
+                });
+                
+                const submitButton = h('button', 'mt-4 w-full bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 ease-in-out', 'Submit Answer');
+                
+                submitButton.onclick = () => {
+                    const selectedOptions = Array.from(document.querySelectorAll('input[name="option"]:checked')).map(cb => parseInt(cb.value));
+                    
+                    const isCorrect = questionData.correct.length === selectedOptions.length && 
+                                      questionData.correct.every(correctIndex => selectedOptions.includes(correctIndex));
+
+                    if (isCorrect) {
+                        score++;
+                    }
+
+                    const message = h('div', `mt-2 p-2 rounded-lg text-sm ${isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`);
+                    const correctAnswersText = questionData.correct.map(index => questionData.options[index]).join(', ');
+                    message.textContent = isCorrect ? 'Correct!' : `Incorrect. The correct answer(s) were: ${correctAnswersText}.`;
+                    questionDiv.appendChild(message);
+                    
+                    submitButton.textContent = 'Next Question';
+                    submitButton.onclick = () => {
+                        currentQuestionIndex++;
+                        renderQuestion();
+                    };
+                    
+                    // Disable all checkboxes after submitting
+                    document.querySelectorAll('input[name="option"]').forEach(cb => cb.disabled = true);
+                };
+                
+                quizContent.appendChild(questionDiv);
+                quizContent.appendChild(optionsDiv);
+                quizContent.appendChild(submitButton);
+            };
+
+            const showQuizResults = () => {
+                const quizContent = document.getElementById('quiz-content');
+                const quizResults = document.getElementById('quiz-results');
+                quizContent.classList.add('hidden');
+                quizResults.classList.remove('hidden');
+                
+                const scorePercentage = (score / QUIZ_QUESTIONS.length) * 100;
+
+                quizResults.innerHTML = `
+                    <p class="text-2xl font-bold mb-4">Quiz Complete!</p>
+                    <p class="text-xl">Your score: ${score} out of ${QUIZ_QUESTIONS.length} (${scorePercentage.toFixed(0)}%)</p>
+                    <button id="quiz-retry" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 ease-in-out">Try Again</button>
+                    <button id="quiz-menu" class="mt-4 ml-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-3 px-6 rounded-lg transition-colors duration-200 ease-in-out">Back to Menu</button>
+                `;
+
+                document.getElementById('quiz-retry').onclick = () => renderQuiz();
+                document.getElementById('quiz-menu').onclick = () => renderMenu();
+            };
+
+            renderQuestion();
+        };
+
+        const renderEffortTracker = () => {
+            appDiv.innerHTML = '';
+            let trackerContainer = h('div', 'bg-white rounded-xl p-8 shadow-lg');
+            trackerContainer.innerHTML = `
+                <h2 class="text-3xl font-bold mb-6 text-center text-green-700">✅ Track Your Conservation Efforts for the Past Week</h2>
+                <p class="text-center text-gray-600 mb-4">Select 'Yes' or 'No' for each daily action. You can skip if you're not sure.</p>
+                <div id="tracker-content"></div>
+                <div class="flex justify-between mt-6">
+                    <button id="submit-tracker" class="bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 ease-in-out">Submit Efforts</button>
+                    <button id="cancel-tracker" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-3 px-6 rounded-lg transition-colors duration-200 ease-in-out">Cancel</button>
+                </div>
+                <div id="tracker-results" class="mt-6 text-center hidden"></div>
+            `;
+            appDiv.appendChild(trackerContainer);
+
+            const trackerContent = document.getElementById('tracker-content');
+            
+            for (let day = 1; day <= 7; day++) {
+                const dayDiv = h('div', 'border-b pb-4 mb-4 last:border-b-0 last:pb-0');
+                dayDiv.innerHTML = `<h3 class="text-xl font-semibold mb-2">Day ${day}</h3>`;
+                EFFORT_PROMPTS.forEach(effort => {
+                    const effortDiv = h('div', 'flex items-center justify-between py-2');
+                    const effortLabel = h('span', 'text-gray-700', effort.text);
+                    const radioGroup = h('div', 'flex space-x-4');
+                    ['yes', 'no', 'skip'].forEach(option => {
+                        const label = h('label', 'flex items-center space-x-1 cursor-pointer');
+                        label.innerHTML = `
+                            <input type="radio" name="day-${day}-${effort.key}" value="${option}" class="text-green-500 focus:ring-green-500">
+                            <span>${option}</span>
+                        `;
+                        radioGroup.appendChild(label);
+                    });
+                    effortDiv.appendChild(effortLabel);
+                    effortDiv.appendChild(radioGroup);
+                    dayDiv.appendChild(effortDiv);
+                });
+                trackerContent.appendChild(dayDiv);
+            }
+
+            document.getElementById('submit-tracker').onclick = async () => {
+                let score = 0;
+                let answeredCount = 0;
+                let allSkipped = true;
+                let trackingData = {};
+
+                for (let day = 1; day <= 7; day++) {
+                    EFFORT_PROMPTS.forEach(effort => {
+                        const selected = document.querySelector(`input[name="day-${day}-${effort.key}"]:checked`);
+                        if (selected) {
+                            allSkipped = false;
+                            const value = selected.value;
+                            if (value === 'yes') {
+                                score++;
+                                answeredCount++;
+                            } else if (value === 'no') {
+                                score--;
+                                answeredCount++;
+                            }
+                        }
+                    });
+                }
+                
+                if (allSkipped) {
+                    renderMessage('You skipped all questions. Your rating is 1/5.', 'error');
+                } else {
+                    const maxScore = answeredCount;
+                    const minScore = -answeredCount;
+                    const normalizedScore = score - minScore;
+                    const range = maxScore - minScore;
+                    const ratio = range > 0 ? normalizedScore / range : 0;
+                    
+                    let rating;
+                    if (ratio >= 0.85) rating = 5;
+                    else if (ratio >= 0.65) rating = 4;
+                    else if (ratio >= 0.45) rating = 3;
+                    else if (ratio >= 0.25) rating = 2;
+                    else rating = 1;
+
+                    let ratingMessage = '';
+                    switch (rating) {
+                        case 5: ratingMessage = "🌟 Excellent! You're an energy-saving superstar!"; break;
+                        case 4: ratingMessage = "👍 Great job! Keep up the good work!"; break;
+                        case 3: ratingMessage = "🙂 You're doing okay, but there's room for improvement."; break;
+                        case 2: ratingMessage = "😕 Try a little harder next week."; break;
+                        case 1: ratingMessage = "🙁 Let's work on improving your habits."; break;
+                    }
+                    
+                    const trackerResults = document.getElementById('tracker-results');
+                    trackerResults.classList.remove('hidden');
+                    trackerResults.innerHTML = `
+                        <p class="text-xl font-bold mb-2">🎉 Thank you for logging your efforts this week!</p>
+                        <p class="text-2xl font-bold mb-4">Your energy-saving rating: ${rating}/5</p>
+                        <p class="text-lg">${ratingMessage}</p>
+                        <button id="tracker-menu" class="mt-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-3 px-6 rounded-lg transition-colors duration-200 ease-in-out">Back to Menu</button>
+                    `;
+                    document.getElementById('tracker-menu').onclick = () => renderMenu();
+                    
+                    // Send tracking data to the server
+                    try {
+                        const response = await fetch('/api/track', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(trackingData)
+                        });
+                        if (!response.ok) throw new Error('Server tracking failed.');
+                    } catch (error) {
+                        renderMessage(`Error saving efforts: ${error.message}`, 'error');
+                    }
+                }
+                document.getElementById('submit-tracker').disabled = true;
+                document.getElementById('cancel-tracker').disabled = true;
+                trackerContent.style.display = 'none';
+            };
+
+            document.getElementById('cancel-tracker').onclick = () => renderMenu('❌ Input cancelled. Returning to main menu.');
+        };
+
+        const renderEffortsSummary = async () => {
+            renderLoading();
+            let summaryData = {};
+            try {
+                const response = await fetch('/api/summary');
+                if (!response.ok) throw new Error('Network response was not ok.');
+                const data = await response.json();
+                summaryData = data.summary;
+            } catch (error) {
+                renderMenu(`Error fetching summary: ${error.message}`, 'error');
+                return;
+            }
+
+            appDiv.innerHTML = '';
+            let summaryContainer = h('div', 'bg-white rounded-xl p-8 shadow-lg');
+            summaryContainer.innerHTML = `
+                <h2 class="text-3xl font-bold mb-4 text-center text-green-700">📊 Your Conservation Efforts Summary</h2>
+                <ul id="summary-list" class="list-disc list-inside space-y-2 text-lg text-gray-700"></ul>
+            `;
+            appDiv.appendChild(summaryContainer);
+
+            const summaryList = document.getElementById('summary-list');
+            
+            EFFORT_PROMPTS.forEach(effort => {
+                const count = summaryData[effort.key] || 0;
+                const listItem = h('li', '', `${effort.text}: <span class="font-bold">${count}</span>`);
+                summaryList.appendChild(listItem);
+            });
+
+            let backButton = h('button', 'mt-6 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200 ease-in-out', '← Back to Menu');
+            backButton.onclick = () => renderMenu();
+            appDiv.appendChild(backButton);
+        };
+
+        const renderEnergyCoach = () => {
+            appDiv.innerHTML = '';
+            const coachContainer = h('div', 'bg-white rounded-xl p-8 shadow-lg');
+            coachContainer.innerHTML = `
+                <h2 class="text-3xl font-bold mb-4 text-center text-green-700">🤖 Energy Coach</h2>
+                <p class="text-center text-gray-600 mb-6">Hello! I'm your Energy Conservation Coach. Let's find ways to save energy together!</p>
+                <div id="coach-content"></div>
+                <button id="coach-menu" class="mt-6 w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-3 px-6 rounded-lg transition-colors duration-200 ease-in-out">Back to Menu</button>
+            `;
+            appDiv.appendChild(coachContainer);
+
+            const coachContent = document.getElementById('coach-content');
+            let step = 0;
+
+            const coachTips = [
+                {
+                    title: 'Lighting Efficiency',
+                    text: 'Did you know replacing old incandescent bulbs with LED lights can save a lot of energy?',
+                    question: 'Have you switched to LED lights in most of your home? (yes/no):',
+                    yes: "That's fantastic! You're already making a big difference. Keep it up!",
+                    no: "No worries! Consider trying LEDs for your most used lights. It's a simple change with a noticeable impact."
+                },
+                {
+                    title: 'Eliminating Phantom Load',
+                    text: "Many electronics consume power even when turned off, often called 'phantom load'.",
+                    question: "Do you unplug chargers and electronics when not in use? (yes/no):",
+                    yes: "Excellent! Every unplugged device helps reduce wasted energy.",
+                    no: "It's easy to forget, but unplugging can save a surprising amount over time. Maybe try it with one device today?"
+                },
+                {
+                    title: 'Efficient Water Use',
+                    text: 'Heating water uses a lot of energy. Taking shorter showers or using cold water for laundry can help.',
+                    question: "Do you consciously try to reduce your hot water usage, perhaps with shorter showers? (yes/no):",
+                    yes: "Awesome! Your efforts in conserving hot water are very impactful.",
+                    no: "Even a small reduction in hot water use can make a difference. It's worth a try!"
+                }
+            ];
+
+            const renderCoachStep = () => {
+                if (step >= coachTips.length) {
+                    coachContent.innerHTML += `<p class="mt-4 text-center text-lg font-bold text-green-700">Remember, every small step contributes to a greener planet and lower bills. Keep up the great work!</p>`;
+                    return;
+                }
+
+                const tip = coachTips[step];
+                const tipDiv = h('div', 'p-4 border border-gray-200 rounded-lg mb-4');
+                tipDiv.innerHTML = `
+                    <h3 class="text-xl font-semibold text-green-600">${tip.title}</h3>
+                    <p class="mt-2 text-gray-700">${tip.text}</p>
+                    <p class="mt-4 text-lg font-medium">${tip.question}</p>
+                    <div class="flex space-x-4 mt-2">
+                        <button class="coach-answer bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200 ease-in-out" data-answer="yes">Yes</button>
+                        <button class="coach-answer bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200 ease-in-out" data-answer="no">No</button>
+                    </div>
+                `;
+                coachContent.appendChild(tipDiv);
+                
+                const answerButtons = tipDiv.querySelectorAll('.coach-answer');
+                answerButtons.forEach(button => {
+                    button.onclick = () => {
+                        const answer = button.dataset.answer;
+                        const feedbackDiv = h('p', `mt-2 p-2 rounded-lg text-sm ${answer === 'yes' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`);
+                        feedbackDiv.textContent = answer === 'yes' ? tip.yes : tip.no;
+                        tipDiv.appendChild(feedbackDiv);
+                        
+                        answerButtons.forEach(btn => btn.disabled = true);
+                        step++;
+                        renderCoachStep();
+                    };
+                });
+            };
+            
+            renderCoachStep();
+            document.getElementById('coach-menu').onclick = () => renderMenu();
+        };
+
+        const printFarewell = () => {
+            appDiv.innerHTML = '';
+            const farewellContainer = h('div', 'bg-white rounded-xl p-8 shadow-lg text-center');
+            farewellContainer.innerHTML = `
+                <h2 class="text-3xl font-bold mb-4 text-green-700">Thank you for using the Energy Conservation App!</h2>
+                <p class="text-lg text-gray-700 mb-6">Every step counts. Share these tips and protect our planet.</p>
+                <p class="text-4xl font-bold text-gray-800">Goodbye!</p>
+            `;
+            appDiv.appendChild(farewellContainer);
+        };
+
+        // Initialize the app
+        renderMenu();
+
+    </script>
+</body>
+</html>
