@@ -10,9 +10,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
-import org.json.JSONArray;
-import org.json.JSONObject;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 // NOTE: This server uses the minimal, built-in Java HTTP Server.
 // It is for demonstration purposes and is not intended for production.
@@ -81,6 +80,9 @@ public class EnergyConservationServer {
         @Override
         public void handle(HttpExchange t) throws IOException {
             try {
+                // Ensure the file path is correct
+                String filePath = Paths.get(filename).toAbsolutePath().toString();
+                System.out.println("Serving file from: " + filePath);
                 byte[] response = Files.readAllBytes(Paths.get(filename));
                 t.getResponseHeaders().set("Content-Type", contentType);
                 t.sendResponseHeaders(200, response.length);
@@ -89,6 +91,8 @@ public class EnergyConservationServer {
                 os.close();
             } catch (IOException e) {
                 String response = "404 (Not Found): " + e.getMessage();
+                System.err.println("File not found: " + filename);
+                e.printStackTrace();
                 t.sendResponseHeaders(404, response.length());
                 OutputStream os = t.getResponseBody();
                 os.write(response.getBytes());
@@ -99,13 +103,48 @@ public class EnergyConservationServer {
 
     /**
      * Handles requests for quiz questions.
+     * This handler manually builds the JSON string.
      */
     static class QuizHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange t) throws IOException {
-            // Convert the list of maps to a JSON array string
-            JSONArray jsonArray = new JSONArray(QUIZ_QUESTIONS);
-            String response = jsonArray.toString();
+            StringBuilder jsonBuilder = new StringBuilder();
+            jsonBuilder.append("[");
+            for (int i = 0; i < QUIZ_QUESTIONS.size(); i++) {
+                Map<String, Object> question = QUIZ_QUESTIONS.get(i);
+                jsonBuilder.append("{");
+                jsonBuilder.append("\"question\":\"").append(question.get("question")).append("\",");
+                
+                // Manually build the options array
+                List<String> options = (List<String>) question.get("options");
+                jsonBuilder.append("\"options\":[");
+                for (int j = 0; j < options.size(); j++) {
+                    jsonBuilder.append("\"").append(options.get(j)).append("\"");
+                    if (j < options.size() - 1) {
+                        jsonBuilder.append(",");
+                    }
+                }
+                jsonBuilder.append("],");
+                
+                // Manually build the correct answers array
+                List<Integer> correct = (List<Integer>) question.get("correct");
+                jsonBuilder.append("\"correct\":[");
+                for (int j = 0; j < correct.size(); j++) {
+                    jsonBuilder.append(correct.get(j));
+                    if (j < correct.size() - 1) {
+                        jsonBuilder.append(",");
+                    }
+                }
+                jsonBuilder.append("]");
+                
+                jsonBuilder.append("}");
+                if (i < QUIZ_QUESTIONS.size() - 1) {
+                    jsonBuilder.append(",");
+                }
+            }
+            jsonBuilder.append("]");
+            
+            String response = jsonBuilder.toString();
             
             t.getResponseHeaders().set("Content-Type", "application/json");
             t.sendResponseHeaders(200, response.length());
@@ -117,6 +156,7 @@ public class EnergyConservationServer {
 
     /**
      * Handles requests to track conservation efforts.
+     * This handler uses a simple custom parser to read the JSON.
      */
     static class TrackHandler implements HttpHandler {
         @Override
@@ -125,12 +165,22 @@ public class EnergyConservationServer {
                 try {
                     // Read the request body (JSON)
                     String requestBody = new String(t.getRequestBody().readAllBytes());
-                    JSONObject json = new JSONObject(requestBody);
+                    
+                    // Simple custom JSON parser for {"key":value, "key2":value2} format
+                    // This is a minimal, non-robust parser for demonstration purposes.
+                    Pattern pattern = Pattern.compile("\"(.*?)\":\\s*(\\d+)");
+                    Matcher matcher = pattern.matcher(requestBody);
+
+                    Map<String, Integer> incomingData = new HashMap<>();
+                    while (matcher.find()) {
+                        String key = matcher.group(1);
+                        int value = Integer.parseInt(matcher.group(2));
+                        incomingData.put(key, value);
+                    }
                     
                     // Update the in-memory map based on the request
-                    for (String key : json.keySet()) {
-                        int value = json.getInt(key);
-                        conservationEfforts.put(key, conservationEfforts.getOrDefault(key, 0) + value);
+                    for (Map.Entry<String, Integer> entry : incomingData.entrySet()) {
+                        conservationEfforts.put(entry.getKey(), conservationEfforts.getOrDefault(entry.getKey(), 0) + entry.getValue());
                     }
                     
                     String response = "{\"status\":\"success\"}";
@@ -152,12 +202,26 @@ public class EnergyConservationServer {
 
     /**
      * Handles requests for the summary of efforts.
+     * This handler manually builds the JSON string.
      */
     static class SummaryHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange t) throws IOException {
-            JSONObject json = new JSONObject(conservationEfforts);
-            String response = "{\"summary\":" + json.toString() + "}";
+            StringBuilder jsonBuilder = new StringBuilder();
+            jsonBuilder.append("{\"summary\":{");
+            
+            int count = 0;
+            for (Map.Entry<String, Integer> entry : conservationEfforts.entrySet()) {
+                jsonBuilder.append("\"").append(entry.getKey()).append("\":").append(entry.getValue());
+                if (count < conservationEfforts.size() - 1) {
+                    jsonBuilder.append(",");
+                }
+                count++;
+            }
+            
+            jsonBuilder.append("}}");
+            
+            String response = jsonBuilder.toString();
             
             t.getResponseHeaders().set("Content-Type", "application/json");
             t.sendResponseHeaders(200, response.length());
