@@ -13,8 +13,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
-// NOTE: This server uses the minimal, built-in Java HTTP Server.
-// It is for demonstration purposes and is not intended for production.
+
 public class EnergyConservationServer {
 
     // A simple, in-memory store for conservation efforts
@@ -167,7 +166,6 @@ public class EnergyConservationServer {
                     String requestBody = new String(t.getRequestBody().readAllBytes());
                     
                     // Simple custom JSON parser for {"key":value, "key2":value2} format
-                    // This is a minimal, non-robust parser for demonstration purposes.
                     Pattern pattern = Pattern.compile("\"(.*?)\":\\s*(\\d+)");
                     Matcher matcher = pattern.matcher(requestBody);
 
@@ -231,3 +229,4 @@ public class EnergyConservationServer {
         }
     }
 }
+
